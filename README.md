@@ -162,7 +162,5 @@ Note: `python learn.py` saves its correct solution in Chroma each time it runs.
 
 - **Free tier quota:** a `generate` message can use up to 4 Gemini requests (classifier, rewrite, relevance check, generation). A paid plan removes this limit.
 - **The code runner is not a full sandbox:** the code can still read files or use the network. A real sandbox would run it in a Docker container or on a separate machine.
-- **No duplicate check when learning:** the same solution can be saved twice. A future version could search Chroma first and skip very close chunks.
 - **Tool calling is started by the Run button:** the next step is an agent loop where the LLM runs the code by itself, reads the error, fixes the code and runs it again.
-- **The classifier can miss a preference** that is written in an unusual way, because it is an LLM decision.
 - **One local user:** SQLite fits a single user on one computer. A shared deployment would use a server database such as PostgreSQL.
