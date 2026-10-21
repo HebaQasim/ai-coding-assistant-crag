@@ -26,11 +26,19 @@ Reply with one word only: relevant or not_relevant."""
 )
 
 
+def source_of(document):
+    """The name of a chunk's source, for example "HumanEval/48", "user_feedback" or "stack_overflow (the page link)"."""
+    url = document.metadata.get("url")   # only solutions from Stack Overflow have a link
+    if url:
+        return f"{document.metadata['source']} ({url})"
+    return document.metadata["source"]
+
+
 def format_context(documents):
     """Put the retrieved chunks in one text, each one under its source."""
     parts = []
     for document in documents:
-        parts.append(f"# Source: {document.metadata['source']}\n{document.page_content}")
+        parts.append(f"# Source: {source_of(document)}\n{document.page_content}")
     return "\n\n".join(parts)
 
 

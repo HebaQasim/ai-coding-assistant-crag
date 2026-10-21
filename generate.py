@@ -1,9 +1,11 @@
-"""Part 5 (step B): the code generation route: rewrite the request -> retrieve from Chroma -> relevance check -> generate code."""
+"""Part 5 (step B): the code generation route: rewrite the request -> retrieve from Chroma -> relevance check -> generate code.
+Part 10: if the retrieved code is not relevant, search Stack Overflow first, and ask the user only if that fails too."""
 from langchain_core.prompts import PromptTemplate
 
 from llm import fast_llm, llm
-from relevance import format_context, is_relevant
+from relevance import format_context, is_relevant, source_of
 from vector_db import get_vector_db
+from web_search import learn_from_web
 
 TOP_K = 3
 
@@ -24,7 +26,7 @@ New message:
 )
 
 NOT_RELEVANT_MESSAGE = (
-    "I couldn't find relevant knowledge for your request. "
+    "I couldn't find relevant knowledge for your request, in my knowledge base or on Stack Overflow. "
     "Could you provide the correct solution or reference so I can learn it for future interactions?"
 )
 
@@ -65,13 +67,38 @@ def make_search_query(message, memory):
 
 
 def generate_code(message, memory):
-    """Return the sources found in Chroma, and the answer as a stream of text pieces."""
+    """Return the route ("generate" or "web_search"), the sources and the answer as a stream of text pieces."""
     query = make_search_query(message, memory)
     documents = vectordb.similarity_search(query, k=TOP_K)
-    sources = [document.metadata["source"] for document in documents]
+    route = "generate"
 
     if not is_relevant(query, documents, memory):
-        return sources, [NOT_RELEVANT_MESSAGE]   # a list with one piece, so the caller can treat it like a stream
+        # Corrective action: search Stack Overflow. If a checked solution is found, it is saved in Chroma
+        # and it becomes the reference for this answer.
+        learned = learn_from_web(query)
+        if learned is None:   # nothing found, or the solution did not pass the checks: ask the user
+            sources = [source_of(document) for document in documents]
+            return route, sources, [NOT_RELEVANT_MESSAGE]   # a list with one piece, so the caller can treat it like a stream
+        documents = [learned]
+        route = "web_search"
 
+    sources = [source_of(document) for document in documents]
     prompt = GENERATE_PROMPT.format(memory=memory.as_text(), context=format_context(documents), message=message)
-    return sources, (chunk.content for chunk in llm.stream(prompt))
+    return route, sources, (chunk.content for chunk in llm.stream(prompt))
+
+
+if __name__ == "__main__":
+    from memory import ConversationMemory
+
+    memory = ConversationMemory()
+    memory.new_conversation()   # the test runs in a new chat; the old chats stay saved
+
+    # HumanEval has nothing about files: the first time, the assistant searches Stack Overflow and learns a solution.
+    # The second time, the same request finds the saved solution in Chroma, so there is no web search.
+    request = "Write a Python function that renames all the .txt files in a folder to .md"
+    for attempt in [1, 2]:
+        route, sources, stream = generate_code(request, memory)
+        print(f"===== Attempt {attempt}")
+        print("Route:", route)
+        print("Sources:", sources)
+        print("".join(stream))

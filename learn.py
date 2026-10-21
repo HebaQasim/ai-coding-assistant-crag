@@ -1,4 +1,5 @@
-"""Part 6: human feedback learning. When retrieval fails and the user sends a solution, it is checked and added to Chroma."""
+"""Part 6: human feedback learning. When retrieval fails and the user sends a solution, it is checked and added to Chroma.
+Part 10 uses the same checks and the same saving for solutions found on Stack Overflow (web_search.py)."""
 import ast
 from datetime import date
 
@@ -16,7 +17,7 @@ THANKS_MESSAGE = (
 )
 
 REVIEW_PROMPT = PromptTemplate.from_template(
-    """You review a solution that a user gave to an AI coding assistant, before it is saved in its knowledge base.
+   """You review a solution (from a user or from Stack Overflow) before it is saved in the knowledge base of an AI coding assistant.
 Does the code correctly solve the request? Small style issues are fine; wrong results or missing parts are not.
 
 Request:
@@ -64,21 +65,20 @@ def check_solution(request, code):
     return reason.strip() or "it does not seem to solve the request."
 
 
-def learn_solution(request, code):
-    """Store the solution in Chroma: create metadata, split it, embed it and insert it."""
-    document = Document(
-        page_content=f"# Request: {request}\n{code}",
-        metadata={
-            "source": "user_feedback",
-            "request": request,
-            "added_on": str(date.today()),
-            "checked": "syntax + LLM review",
-        },
-    )
+def learn_solution(request, code, source="user_feedback", url=""):
+    """Store the solution in Chroma: create metadata, split it, embed it and insert it. Return the new Document."""
+    metadata = {
+        "source": source,   # "user_feedback" or "stack_overflow"
+        "request": request,
+        "added_on": str(date.today()),
+        "checked": "syntax + LLM review",
+    }
+    if url:   # a solution from Stack Overflow keeps the link of its page
+        metadata["url"] = url
+    document = Document(page_content=f"# Request: {request}\n{code}", metadata=metadata)
     chunks = split_documents([document])
     vectordb.add_documents(chunks)   # Chroma creates the embeddings with our embedding model
-    return len(chunks)
-
+    return document
 
 def handle_solution(request, code):
     """Check the user's solution and save it only if it passes. Return (saved, message for the user)."""

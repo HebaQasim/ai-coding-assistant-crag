@@ -23,8 +23,7 @@ def route(message, memory):
         if preferences:
             return intent, [], [f"Got it! Your preferences for this chat are now: {preferences}."]
         return intent, [], [OTHER_MESSAGE]
-    sources, stream = generate_code(message, memory)
-    return intent, sources, stream
+    return generate_code(message, memory)   # the route is "generate", or "web_search" if Stack Overflow was used
 
 
 if __name__ == "__main__":
@@ -34,8 +33,8 @@ if __name__ == "__main__":
     memory.new_conversation()   # the test runs in a new chat; the old chats stay saved
 
     # A small conversation: the 2nd and 3rd messages only make sense with the memory.
-    # The 4th one checks that a request with no knowledge in Chroma is still "not relevant",
-    # and the 5th one that a message that is not a coding request gets a short reply.
+    # The 4th one has no knowledge in HumanEval: the first time, the assistant searches Stack Overflow and learns it.
+    # The 5th one checks that a message that is not a coding request gets a short reply.
     messages = [
         "Write a Python function that checks if a string is a palindrome. I prefer short comments in my code.",
         "Now make it ignore spaces and capital letters",
