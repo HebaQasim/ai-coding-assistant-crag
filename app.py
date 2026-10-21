@@ -1,4 +1,5 @@
-"""Part 9: the Streamlit app. A chat interface for the AI coding assistant."""
+"""Part 9: the Streamlit app. A chat interface for the AI coding assistant.
+Part 10 adds the "web_search" route: the answer was written from a solution found on Stack Overflow."""
 import streamlit as st
 
 from code_runner import extract_code, format_run_result, run_with_llm
@@ -12,6 +13,7 @@ MAX_MESSAGE_LENGTH = 15_000   # characters
 ROUTE_LABELS = {
     "explain": "Route: explain code (direct LLM answer, no RAG)",
     "generate": "Route: generate code (Chroma retrieval + relevance check)",
+    "web_search": "Route: generate code (nothing relevant in Chroma, so a solution was found on Stack Overflow)",
     "learning": "Route: learning (the solution is checked before it is saved in Chroma)",
     "run": "Route: code runner tool (the LLM called run_code)",
     "other": "Route: not a coding request",
@@ -20,7 +22,7 @@ ROUTE_LABELS = {
 st.set_page_config(page_title="AI Coding Assistant", page_icon="💻")
 st.title("💻 AI Coding Assistant")
 st.caption("Explains code, writes code using a knowledge base of solved problems, runs it, "
-           "and learns from your solutions.")
+           "and learns new solutions from Stack Overflow and from you.")
 
 # Session state: these values stay the same when Streamlit reruns the script after each click
 if "memory" not in st.session_state:
@@ -93,7 +95,11 @@ for number, message in enumerate(memory.messages):
         if message["role"] == "assistant":
             if message.get("route") in ROUTE_LABELS:
                 st.caption(ROUTE_LABELS[message["route"]])
-            if message.get("sources"):
+            if message.get("route") == "web_search":
+                # the chunks from Chroma were not relevant: the source is the solution learned from Stack Overflow
+                st.caption(f"Relevance check: not relevant ❌ | Searched Stack Overflow, checked and saved: "
+                           f"{', '.join(message['sources'])}")
+            elif message.get("sources"):
                 decision = "not relevant ❌" if message["text"] == NOT_RELEVANT_MESSAGE else "relevant ✅"
                 st.caption(f"Retrieved from Chroma: {', '.join(message['sources'])} | Relevance check: {decision}")
             show_run_button(number, message["text"])

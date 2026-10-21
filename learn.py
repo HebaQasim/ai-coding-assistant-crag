@@ -17,7 +17,7 @@ THANKS_MESSAGE = (
 )
 
 REVIEW_PROMPT = PromptTemplate.from_template(
-   """You review a solution (from a user or from Stack Overflow) before it is saved in the knowledge base of an AI coding assistant.
+    """You review a solution (from a user or from Stack Overflow) before it is saved in the knowledge base of an AI coding assistant.
 Does the code correctly solve the request? Small style issues are fine; wrong results or missing parts are not.
 
 Request:
@@ -79,6 +79,7 @@ def learn_solution(request, code, source="user_feedback", url=""):
     chunks = split_documents([document])
     vectordb.add_documents(chunks)   # Chroma creates the embeddings with our embedding model
     return document
+
 
 def handle_solution(request, code):
     """Check the user's solution and save it only if it passes. Return (saved, message for the user)."""
